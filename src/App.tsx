@@ -50,6 +50,7 @@ import {
   Settings
 } from 'lucide-react';
 import UserManagement from './components/UserManagement';
+import AdminPanel from './components/AdminPanel';
 
 interface Lead {
   id: string;
@@ -116,6 +117,7 @@ interface TeamMember {
 }
 
 function App() {
+  const [currentRoute, setCurrentRoute] = useState('/');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -201,6 +203,28 @@ function App() {
       subtitle: "Transformamos tu inversión publicitaria en crecimiento sostenible"
     }
   ];
+
+  // Verificar ruta actual
+  useEffect(() => {
+    const path = window.location.pathname;
+    setCurrentRoute(path);
+    
+    // Si está en /admin pero no está logueado, redirigir a home
+    if (path === '/admin' && !isAuthenticated) {
+      window.history.pushState({}, '', '/');
+      setCurrentRoute('/');
+    }
+  }, [isAuthenticated]);
+
+  // Manejar cambios de ruta
+  const navigateTo = (path: string) => {
+    if (path === '/admin' && !isAuthenticated) {
+      setIsLoginOpen(true);
+      return;
+    }
+    window.history.pushState({}, '', path);
+    setCurrentRoute(path);
+  };
 
   // Cargar datos del localStorage
   useEffect(() => {
@@ -673,6 +697,18 @@ function App() {
       results: "150% más consultas legales"
     }
   ];
+
+  // Si está en la ruta /admin, mostrar el panel de administración
+  if (currentRoute === '/admin') {
+    if (!isAuthenticated) {
+      navigateTo('/');
+      return null;
+    }
+    return <AdminPanel user={session?.user} onLogout={() => {
+      setIsAuthenticated(false);
+      navigateTo('/');
+    }} />;
+  }
 
   if (showAdminPanel) {
     return (
@@ -1487,12 +1523,35 @@ function App() {
               <a href="#blog" className="text-gray-700 hover:text-[#0e368d] font-medium transition-colors">Blog</a>
               <a href="#testimonios" className="text-gray-700 hover:text-[#0e368d] font-medium transition-colors">Testimonios</a>
               <a href="#contacto" className="text-gray-700 hover:text-[#0e368d] font-medium transition-colors">Contacto</a>
-              <button
-                onClick={() => setIsLoginOpen(true)}
-                className="bg-gradient-to-r from-[#0e368d] to-[#942ace] text-white px-6 py-2 rounded-full hover:shadow-lg transform hover:scale-105 transition-all duration-200 font-medium"
-              >
-                Acceso
-              </button>
+              {!isAuthenticated ? (
+                <button
+                  onClick={() => setIsLoginOpen(true)}
+                  className="bg-[#942ace] text-white px-4 py-2 rounded-lg hover:bg-[#7a2299] transition-colors"
+                >
+                  Iniciar Sesión
+                </button>
+              ) : (
+                <div className="flex items-center space-x-4">
+                  <span className="text-gray-700">Hola, {session?.user?.name}</span>
+                  <button
+                    onClick={() => navigateTo('/admin')}
+                    className="bg-[#0e368d] text-white px-4 py-2 rounded-lg hover:bg-[#0c2d75] transition-colors"
+                  >
+                    Panel Admin
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsAuthenticated(false);
+                      if (currentRoute === '/admin') {
+                        navigateTo('/');
+                      }
+                    }}
+                    className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                  >
+                    Cerrar Sesión
+                  </button>
+                </div>
+              )}
             </nav>
 
             <button
@@ -2633,6 +2692,7 @@ function App() {
           </div>
         </div>
       )}
+
     </div>
   );
 }
